@@ -127,6 +127,9 @@ Code, Grok и Codex; ревью живёт в отдельном необяза�
 - пять агентов `agents/<движок>-code-reviewer.md` и `agents/review-discussion.md`;
 - `skills/shared/code-review-prompt.md`, `skills/shared/render-template.py`,
   `skills/shared/find-mesh-exec.sh` (новый);
+- `skills/shared/resolve-plugin-root.sh` — своя копия: ищет корень `mesh-review` по маркеру
+  `skills/shared/find-mesh-exec.sh` и шаблону `*mesh-review*`. С ней блоки поиска в скиллах ревью
+  сохраняют прежнее устройство, меняются только маркер и шаблон;
 - в `plugin.json`: `"dependencies": ["mesh-exec", "session-relay"]`.
 
 **`claude-md`** — новый репозиторий:
@@ -167,7 +170,9 @@ Code, Grok и Codex; ревью живёт в отдельном необяза�
 
 - Секции нынешнего конфига остаются все: `providers`, `models`, `claude`, `codex`, `gemini`, `grok`,
   `defaults` (пресеты ревью) и `runtime`.
-- `config-loader.sh data-dir` возвращает `~/.local/state/mesh`.
+- `config-loader.sh data-dir` возвращает `~/.local/state/mesh`. Новая подкоманда
+  `config-loader.sh config-path` печатает путь конфига: его называют сообщения о том, что конфига
+  ещё нет, и подсказки `preflight-env.sh` — `data-dir` теперь каталог состояния, а не конфига.
 - Поиск каталога данных шаблоном уходит отовсюду: из `resolve_plugin_data` в загрузчике, из
   `verify-delegation.sh`, из хука, из агентов `claude-code-reviewer`, `codex-code-reviewer`,
   `ext-claude-code-reviewer`, `gemini-code-reviewer`, `grok-code-reviewer`, `claude-executor`,
@@ -178,6 +183,9 @@ Code, Grok и Codex; ревью живёт в отдельном необяза�
 - `runtime.do_plan_default_stop_tokens` в конфиге `mesh` вызывает предупреждение «переехало в
   session-relay», а не ошибку. Так старый конфиг проходит валидацию после простого копирования.
 - `runtime.dispatch_model` остаётся: его читают агенты-исполнители и `review-discussion`.
+- Внутренние переменные `CLAUDE_MESH_PROVIDER_KIND`, `CLAUDE_MESH_DATA_DIR`,
+  `CLAUDE_MESH_TIMEOUT_*` не переименовываются: это интерфейс между загрузчиком и exec-скиллами,
+  а не имя плагина.
 - В Codex запись в `~/.local/state/mesh` из песочницы требует `--add-dir` или подтверждения.
   README говорит об этом так же, как README herdr-review.
 
@@ -403,13 +411,15 @@ GitHub сохраняет редиректы со старых адресов, �
 | Набор | Куда | Что меняется |
 |-------|------|--------------|
 | `test-config-loader.sh`, `lib-yq-doubles.sh`, `fixtures/` | `mesh-exec` | Пути XDG; предупреждение про `do_plan_default_stop_tokens`; ошибка с командой `cp` при найденном старом конфиге |
-| `test-resolve-plugin-root.sh` | `mesh-exec` | Имя плагина в шаблонах поиска |
+| `test-resolve-plugin-root.sh` | `mesh-exec`; порт — в `mesh-review` | Имя плагина в шаблонах поиска; в обоих — тест, что `claude-mesh` в кеше не принимается за свой корень |
 | `test-preflight-env.sh`, `test-watch-runs.sh`, `test-verify-delegation.sh`, `test-extract-result.sh`, `test-stream-json-report.sh` | `mesh-exec` | Пути прогонов |
 | `test-grok-effort-resolution.sh`, `test-grok-run-discovery.sh`, `test-grok-exec-smoke.sh`, `test-host-claude-env.sh`, `test-list-host-models.sh` | `mesh-exec` | Имена в сообщениях |
 | `test-claude-cli-agents.sh` | делится | Часть про `claude-executor` уходит в `mesh-exec`, часть про `claude-code-reviewer` и `claude-code-review` — в `mesh-review` |
 | `test-command-sync.sh`, `test-grok-code-review-bindings.sh`, `test-render-template.sh` | `mesh-review` | Имена в синхронизируемых фрагментах |
 | `test-loader-resolution.sh` | `mesh-review`, переписывается | Проверяет, что фрагмент поиска `mesh-exec` дословно одинаков во всех местах `mesh-review`; часть про `do-plan.md` уходит |
 | `test-find-mesh-exec.sh` (новый) | `mesh-review` | Порядок поиска, `MESH_EXEC_ROOT`, ошибка при отсутствии `mesh-exec` |
+| `test-mesh-exec-fences.sh` (новый) | `mesh-review` | Каждый bash-фрагмент, где встречается `$MESH_EXEC`, присваивает его раньше |
+| `test-missing-config-handler.sh` (новый) | `mesh-review` | Оба оркестратора при коде 2 печатают stderr загрузчика и называют файл через `config-path` |
 | `test-check-context-size.sh` | `session-relay` | Путь состояния XDG |
 | `test-do-plan.sh` | `session-relay` | Ридер конфига вместо загрузчика; проверка окна в Grok; отказ без сигнала о заполнении контекста |
 | `test-list-host-models.sh` и его фикстура (копии) | `session-relay` | — |
