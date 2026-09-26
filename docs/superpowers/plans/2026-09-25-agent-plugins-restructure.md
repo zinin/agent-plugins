@@ -367,12 +367,12 @@ release() {  # release <local dir> <plugin name> <version> <default branch>
   notes=$(awk -v v="## [$ver]" 'index($0,v)==1{f=1;next} f&&/^## \[/{exit} f{print}' CHANGELOG.md)
   gh release create "$name--v$ver" --repo "zinin/$name" --verify-tag --title "$name $ver" --notes "$notes"
 }
-release /opt/github/zinin/claude-mesh      mesh-exec       0.16.0 master
-release /opt/github/zinin/session-relay    session-relay   0.16.0 master
-release /opt/github/zinin/mesh-review      mesh-review     0.16.0 master
-release /opt/github/zinin/claude-md        claude-md       0.16.0 master
-release /opt/github/zinin/claude-forge     build-forge     0.3.0  master
-release /opt/github/zinin/claude-atlassian atlassian-scout 0.6.0  master
+release /opt/github/zinin/claude-mesh      mesh-exec       0.16.0 master &&
+release /opt/github/zinin/session-relay    session-relay   0.16.0 master &&
+release /opt/github/zinin/mesh-review      mesh-review     0.16.0 master &&
+release /opt/github/zinin/claude-md        claude-md       0.16.0 master &&
+release /opt/github/zinin/claude-forge     build-forge     0.3.0  master &&
+release /opt/github/zinin/claude-atlassian atlassian-scout 0.6.0  master &&
 release /opt/github/zinin/claude-prd       prd-flow        0.2.0  main
 ```
 
