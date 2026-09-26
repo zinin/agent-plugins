@@ -281,9 +281,14 @@ for r in session-relay mesh-review claude-md; do
   desc=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["description"])' "/opt/github/zinin/$r/.claude-plugin/plugin.json")
   gh repo create "zinin/$r" --public --description "$desc"
   git -C "/opt/github/zinin/$r" remote add origin "git@github.com:zinin/$r.git"
-  git -C "/opt/github/zinin/$r" push -u origin master feature/agent-plugins-restructure
+  git -C "/opt/github/zinin/$r" push -u origin master
+  git -C "/opt/github/zinin/$r" push -u origin feature/agent-plugins-restructure
+  gh repo edit "zinin/$r" --default-branch master
+  gh repo view "zinin/$r" --json defaultBranchRef -q .defaultBranchRef.name
 done
 ```
+
+Expected: `master` три раза — установки из каталога идут с ветки по умолчанию.
 
 - [ ] **Step 3: Отправить ветки существующих репозиториев**
 
@@ -351,15 +356,16 @@ done
 ```bash
 release() {  # release <local dir> <plugin name> <version> <default branch>
   local dir="$1" name="$2" ver="$3" br="$4" today; today=$(date +%F)
-  cd "$dir" && git switch -q "$br" && git pull -q --ff-only
-  sed -i 's/"version": "[^"]*"/"version": "'"$ver"'"/' .claude-plugin/plugin.json
+  cd "$dir" && git switch -q "$br" && git pull -q --ff-only || { echo "release $name: cannot update $br"; return 1; }
+  grep -qF "\"name\": \"$name\"" .claude-plugin/plugin.json || { echo "release $name: $br does not carry the merged plugin"; return 1; }
   grep -q '^## \[Unreleased\]$' CHANGELOG.md || { echo "no [Unreleased] in $name"; return 1; }
+  sed -i 's/"version": "[^"]*"/"version": "'"$ver"'"/' .claude-plugin/plugin.json
   sed -i "0,/^## \[Unreleased\]\$/s//## [$ver] - $today/" CHANGELOG.md
-  git commit -q -m "chore(release): $ver" -- .claude-plugin/plugin.json CHANGELOG.md
-  git tag -a "$name--v$ver" -m "$name $ver"
-  git push -q origin "$br" --follow-tags
+  git commit -q -m "chore(release): $ver" -- .claude-plugin/plugin.json CHANGELOG.md || return 1
+  git tag -a "$name--v$ver" -m "$name $ver" || return 1
+  git push -q origin "$br" --follow-tags || return 1
   notes=$(awk -v v="## [$ver]" 'index($0,v)==1{f=1;next} f&&/^## \[/{exit} f{print}' CHANGELOG.md)
-  gh release create "$name--v$ver" --repo "zinin/$name" --title "$name $ver" --notes "$notes"
+  gh release create "$name--v$ver" --repo "zinin/$name" --verify-tag --title "$name $ver" --notes "$notes"
 }
 release /opt/github/zinin/claude-mesh      mesh-exec       0.16.0 master
 release /opt/github/zinin/session-relay    session-relay   0.16.0 master
@@ -370,7 +376,7 @@ release /opt/github/zinin/claude-atlassian atlassian-scout 0.6.0  master
 release /opt/github/zinin/claude-prd       prd-flow        0.2.0  main
 ```
 
-Expected: семь релизов; в новых репозиториях `plugin.json` уже был 0.16.0 — коммит меняет только CHANGELOG.
+Expected: семь релизов; в новых репозиториях `plugin.json` уже был 0.16.0 — коммит меняет только CHANGELOG. Любая ошибка внутри `release` печатает причину и возвращает 1 — остановиться и разобраться, не переходить к следующему плагину.
 
 - [ ] **Step 4: Выпустить каталог**
 
@@ -402,13 +408,14 @@ Expected: девять новых имён.
 ```bash
 python3 -c 'import json,os; d=json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json"))); print(sorted(k for k in d["plugins"] if k.endswith("@zinin")))'
 grok inspect --json | python3 -c 'import json,sys; print(sorted(p["name"] for p in json.load(sys.stdin)["plugins"]))'
+ls -d ~/.claude/plugins/cache/zinin/mesh-exec/* ~/.grok/installed-plugins/mesh-exec-* 2>/dev/null
 ```
 
-Expected: `build-forge@zinin`, `claude-md@zinin`, `codex-base-review@zinin`, `herdr-review@zinin`, `mesh-exec@zinin`, `session-relay@zinin`, `atlassian-scout@zinin`, `prd-flow@zinin` (+ `mesh-review@zinin`, если ставился); ни одного `claude-mesh`, `claude-forge`, `claude-atlassian`, `claude-prd`. Grok видит те же плагины.
+Expected: `build-forge@zinin`, `claude-md@zinin`, `codex-base-review@zinin`, `herdr-review@zinin`, `mesh-exec@zinin`, `session-relay@zinin`, `atlassian-scout@zinin`, `prd-flow@zinin` (+ `mesh-review@zinin`, если ставился); ни одного `claude-mesh`, `claude-forge`, `claude-atlassian`, `claude-prd`. Grok видит те же плагины. `ls` печатает хотя бы один каталог `mesh-exec`: mesh-review и exec-скиллы ищут mesh-exec по этому имени.
 
 - [ ] **Step 3: Codex (по желанию пользователя)** — `codex plugin marketplace add zinin/agent-plugins`, затем `codex plugin add <имя>@zinin` для нужных.
 
-- [ ] **Step 4: Слить MR на gitlab.zinin.ru** (подтверждение пользователя) — `glab mr merge` в ai-tools, claude-private-plugins, claude-ebs, wireguard-network.
+- [ ] **Step 4: Слить MR на gitlab.zinin.ru** (подтверждение пользователя) — `glab mr merge` в ai-tools, claude-private-plugins, claude-ebs, wireguard-network. В wireguard-network master ушёл вперёд после начала ветки (15 коммитов на 2026-09-26); локальное трёхстороннее слияние чистое. Если проект требует fast-forward, — `glab mr merge --rebase`.
 
 - [ ] **Step 5: Уборка**
 
