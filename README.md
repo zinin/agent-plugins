@@ -29,7 +29,7 @@ Agent plugins by [zinin](https://github.com/zinin) for Claude Code, Grok and Cod
 | Plugin | Claude Code | Grok | Codex |
 |---|---|---|---|
 | mesh-exec | ✓ | ✓ | codex-exec, grok-exec: ✓ in a trusted folder or with `-s workspace-write`, plus `--add-dir ~/.local/state/mesh`, the CLI's home writable and network on (see its README); ext-claude-exec: — in `codex exec`, Codex refuses its `rm -f` step; gemini-exec: not verified — no Gemini credentials on the test machine (the Codex side — skill, loader, run dir — worked); no executor agents — Codex has no plugin agents |
-| session-relay | ✓ | ✓; do-plan's STOP fires only when a turn ends | prompt generators and pause: ✓ in a writable workspace (a trusted folder or `-s workspace-write`); do-plan refuses — no context signal |
+| session-relay | ✓ | ✓; do-plan reads the context count as of the last finished turn — a run that stays in one turn does not pause | prompt generators and pause: ✓ in a writable workspace (a trusted folder or `-s workspace-write`); do-plan refuses — no context signal |
 | mesh-review | ✓ | ✓ | not supported — dispatches plugin agents |
 | claude-md | ✓ | ✓ | installs; Codex reads AGENTS.md, not CLAUDE.md |
 | build-forge | ✓ | ✓ | deps-update and the updaters: ✓ in a trusted folder or with `-s workspace-write`, with network on (`-c sandbox_workspace_write.network_access=true`); build needs the build-runner agent |
