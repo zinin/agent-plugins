@@ -28,13 +28,13 @@ Agent plugins by [zinin](https://github.com/zinin) for Claude Code, Grok and Cod
 
 | Plugin | Claude Code | Grok | Codex |
 |---|---|---|---|
-| mesh-exec | ✓ | ✓ | codex-exec, grok-exec: ✓ with `--add-dir ~/.local/state/mesh`, the CLI's home writable and network on (see its README); ext-claude-exec: — in `codex exec`, Codex refuses its `rm -f` step; gemini-exec: not verified; no executor agents — Codex has no plugin agents |
+| mesh-exec | ✓ | ✓ | codex-exec, grok-exec: ✓ in a trusted folder or with `-s workspace-write`, plus `--add-dir ~/.local/state/mesh`, the CLI's home writable and network on (see its README); ext-claude-exec: — in `codex exec`, Codex refuses its `rm -f` step; gemini-exec: not verified — no Gemini credentials on the test machine (the Codex side — skill, loader, run dir — worked); no executor agents — Codex has no plugin agents |
 | session-relay | ✓ | ✓; do-plan's STOP fires only when a turn ends | prompt generators and pause: ✓ in a writable workspace (a trusted folder or `-s workspace-write`); do-plan refuses — no context signal |
 | mesh-review | ✓ | ✓ | not supported — dispatches plugin agents |
 | claude-md | ✓ | ✓ | installs; Codex reads AGENTS.md, not CLAUDE.md |
-| build-forge | ✓ | ✓ | deps-update and the updaters: ✓ with network on (`-c sandbox_workspace_write.network_access=true`); build needs the build-runner agent |
+| build-forge | ✓ | ✓ | deps-update and the updaters: ✓ in a trusted folder or with `-s workspace-write`, with network on (`-c sandbox_workspace_write.network_access=true`); build needs the build-runner agent |
 | atlassian-scout | ✓ | ✓ | ✓ with `[mcp_servers.mcp-atlassian]` in Codex's `config.toml` |
-| prd-flow | ✓ | ✓ | ✓ in the interactive session; `codex exec` stops at its first question |
+| prd-flow | ✓ | ✓ | ✓ — the interview starts (`codex exec` stops at its first question) |
 | herdr-review | ✓ | ✓ | ✓ (see its README) |
 | codex-base-review | ✓ | ✓ | ✓ |
 
@@ -69,11 +69,13 @@ What does not work in Codex yet is tracked for a separate change:
 - mesh-exec looks for its own root only in Claude Code's and Grok's plugin directories, not in
   Codex's plugin cache: its skills' fences stop with "mesh-exec plugin root not found" unless the
   model fills in the path Codex shows for the skill.
-- ext-claude-exec: `codex exec` refuses the `rm -f` in its preflight, so no run starts.
+- `codex exec` refuses commands that contain `rm -f`, and the preflights of ext-claude-exec and
+  grok-exec do: ext-claude-exec never starts, and grok-exec got through only because the model
+  rewrote the command.
 - A mesh-exec run has to stay in the foreground: a background job does not outlive the
   `codex exec` turn.
-- Inside Codex's sandbox `$$` is 2, so mesh-exec run directories lose their PID suffix; two runs
-  of one task in the same second would share a directory.
+- Inside Codex's sandbox `$$` is always 2, so every mesh-exec run directory gets the same `-2-`
+  suffix; two runs of one task in the same second would share a directory.
 - Codex does not substitute `${CLAUDE_PLUGIN_ROOT}` or `${CLAUDE_SKILL_DIR}` in skill text: the
   model has to find the plugin's path itself (it did for build-forge's helpers; atlassian-scout's
   attachment download was not exercised).
