@@ -19,7 +19,7 @@
     {
       "name": "mesh-review",
       "source": { "source": "url", "url": "https://github.com/zinin/mesh-review.git" },
-      "description": "Multi-model code and design review from inside the session, for Claude Code and Grok; installs mesh-exec and session-relay with it"
+      "description": "Multi-model code and design review from inside the session, for Claude Code and Grok; needs mesh-exec and session-relay, which Claude Code installs with it"
     },
     {
       "name": "claude-md",

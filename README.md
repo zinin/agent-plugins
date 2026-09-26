@@ -58,7 +58,17 @@ claude plugin install prd-flow@zinin
 claude plugin install mesh-review@zinin    # optional
 ```
 
-Then copy the mesh config to its new place — mesh-exec's README, "Moving from claude-mesh".
+If claude-prd was disabled, disable prd-flow the same way: `claude plugin disable prd-flow@zinin`.
+
+Then move the configs: copy the mesh config to `~/.config/mesh/config.yaml` (mode 600) —
+mesh-exec's README, "Moving from claude-mesh"; if it set `runtime.dispatch_model`, write
+`dispatch_model: <model>` to `~/.config/session-relay/config.yaml` — session-relay's README,
+"Moving from claude-mesh". `--keep-data` above keeps the old config until you have copied it.
+
+Grok needs no step of its own: it loads what Claude Code installed, and `grok inspect` lists the
+new names. In Codex: `codex plugin marketplace add zinin/agent-plugins`, then
+`codex plugin add <name>@zinin` for each plugin you use there.
+
 The catalog was `zinin/claude-plugins`; GitHub redirects that address, so an existing
 `zinin` catalog keeps working and needs no re-adding.
 
