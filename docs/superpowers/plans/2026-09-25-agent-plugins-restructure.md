@@ -238,204 +238,28 @@
 
 ### Task 20: смоук в Claude Code
 
-**Где:** рабочие деревья всех семи плагинов через `--plugin-dir`, песочный репозиторий. Опубликованные `claude-*@zinin` остаются установленными — имена не пересекаются.
+✅ Done — no commits (smoke, R16); report `.superpowers/sdd/…/task-20-report.md`. Fix from it: **Task 20a** (owner-approved scope, R20/R21) — mesh-review rc=2 hint defers to the loader's move command and calls it the user's step, `0a54be7`, `aba6b5e` (mesh-review)
 
-- [ ] **Step 1: Песочный репозиторий**
-
-```bash
-SMOKE=/tmp/agent-plugins-smoke; rm -rf "$SMOKE"; mkdir -p "$SMOKE" && cd "$SMOKE"
-git init -q -b master
-printf 'def add(a, b):\n    return a + b\n' > calc.py
-printf 'from calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n' > test_calc.py
-git add calc.py test_calc.py && git commit -qm "init"
-git switch -qc feature/smoke
-printf 'def add(a, b):\n    return a - b\n' > calc.py && git commit -qam "change add"
-PD=(--plugin-dir /opt/github/zinin/claude-mesh --plugin-dir /opt/github/zinin/session-relay --plugin-dir /opt/github/zinin/mesh-review \
-    --plugin-dir /opt/github/zinin/claude-md --plugin-dir /opt/github/zinin/claude-forge --plugin-dir /opt/github/zinin/claude-atlassian \
-    --plugin-dir /opt/github/zinin/claude-prd)
-declare -p PD > /tmp/agent-plugins-smoke.pd
-```
-
-- [ ] **Step 2: Что видит сессия**
-
-```bash
-cd /tmp/agent-plugins-smoke && source /tmp/agent-plugins-smoke.pd
-claude -p "${PD[@]}" --output-format stream-json --verbose "Reply OK" < /dev/null 2>/dev/null \
-  | jq -r 'select(.type=="system" and .subtype=="init") | (.skills[]?, .agents[]?)' \
-  | grep -E '^(mesh-exec|session-relay|mesh-review|claude-md|build-forge|atlassian-scout|prd-flow):' | sort
-```
-
-Expected (порядок сортировки): `atlassian-scout:analyze-jira-ticket`, `…:analyze-wiki`, `…:investigate-bug`, `…:investigate-feature`; `build-forge:build`, `build-forge:build-runner`, `build-forge:deps-update`, `build-forge:google-maven-updater`, `build-forge:gradle-plugin-updater`; `claude-md:claude-md-writer`; `mesh-exec:claude-executor`, `mesh-exec:codex-exec`, `mesh-exec:codex-executor`, `mesh-exec:ext-claude-exec`, `mesh-exec:ext-claude-executor`, `mesh-exec:gemini-exec`, `mesh-exec:gemini-executor`, `mesh-exec:grok-exec`, `mesh-exec:grok-executor`; `mesh-review:` — пять `*-code-review`, пять `*-code-reviewer`, `mesh-design-review`, `review-discussion` и четыре команды (`mesh-review`, `auto-decide-disputed`, `code-review-fresh-session`, `design-review-fresh-session`), если Claude Code перечисляет команды в `skills`; `prd-flow:idea-to-prd`, `prd-flow:refine-prd`, `prd-flow:refine-tasks`; `session-relay:` — пять скиллов. Команды `mesh-review:*`, которых нет в `skills`, проверить в `.slash_commands[]` тем же `jq` с `.slash_commands[]?`. Записать фактический список в отчёт задачи.
-
-- [ ] **Step 3: mesh-exec — прогон через исполнителя**
-
-```bash
-cd /tmp/agent-plugins-smoke && source /tmp/agent-plugins-smoke.pd
-BEFORE=$(date +%s)
-claude -p "${PD[@]}" "Use the mesh-exec:codex-executor agent: have Codex reply with the single word PONG. Then print the run directory it created." < /dev/null | tail -5
-find "${XDG_STATE_HOME:-$HOME/.local/state}/mesh/runs/codex" -mindepth 1 -maxdepth 1 -type d -newermt "@$BEFORE" | head -3
-```
-
-Expected: новый каталог прогона под `~/.local/state/mesh/runs/codex/`, в его `output.txt` есть `PONG`.
-
-- [ ] **Step 4: session-relay — генератор и шаги 1–3 `do-plan`**
-
-```bash
-cd /tmp/agent-plugins-smoke && source /tmp/agent-plugins-smoke.pd
-claude -p "${PD[@]}" "/session-relay:transfer-session" < /dev/null | tail -3; ls docs/session-transfer-*.md
-claude -p "${PD[@]}" "/session-relay:do-plan 300k — smoke test: run Steps 1 to 3 only, then stop before Step 4. There is no plan to execute." < /dev/null | tail -6
-ls -t "${XDG_STATE_HOME:-$HOME/.local/state}"/session-relay/do-plan-config-*agent-plugins-smoke* | head -1 | xargs cat
-```
-
-Expected: файл `docs/session-transfer-<дата>-<время>.md`; строка `/session-relay:do-plan: STOP threshold = 300000 tokens. Dispatch model = opus …`; `{"stop_threshold":300000}`. Если модель не остановилась после шага 3 — это поведение модели, не плагина: записать и продолжить.
-
-- [ ] **Step 5: mesh-review — один ревьюер через mesh-exec**
-
-```bash
-cd /tmp/agent-plugins-smoke && source /tmp/agent-plugins-smoke.pd
-BEFORE=$(date +%s)
-MESH_EXEC_ROOT=/opt/github/zinin/claude-mesh claude -p "${PD[@]}" "/mesh-review:codex-code-review BASE_BRANCH=master — review the change on this branch" < /dev/null | tail -15
-find "${XDG_STATE_HOME:-$HOME/.local/state}/mesh/runs/codex" -mindepth 1 -maxdepth 1 -type d -newermt "@$BEFORE" | head -3
-```
-
-Expected: новый каталог прогона; отзыв находит, что `add` вычитает вместо сложения.
-
-- [ ] **Step 6: build-forge — агент под новым именем**
-
-```bash
-cd /tmp/agent-plugins-smoke && source /tmp/agent-plugins-smoke.pd
-claude -p "${PD[@]}" "/build-forge:build run the Python tests with pytest" < /dev/null | tail -8
-```
-
-Expected: отчёт build-runner о прогоне pytest с одним проваленным тестом (`test_add`) — ветка специально сломана.
-
-- [ ] **Step 7: Итог**
-
-Записать в отчёт задачи результаты шагов 2–6. Каталоги данных вида `~/.claude/plugins/data/*-inline`, если Claude Code их создал для `--plugin-dir`, удалить, только если они пусты (`rmdir`).
+**Interfaces:**
+- Facts for README/tables: all seven plugins load under `--plugin-dir` (39 skills/agents; mesh-review commands in `slash_commands`); a bare mesh-review load without mesh-exec/session-relay is dropped as `dependency-unsatisfied`; session-relay's hook delivers a real `ctx:…k STOP` reminder; one-shot `claude -p` kills mesh-exec's background runs at turn end (R19, pre-existing).
 
 ---
 
 ### Task 21: смоук в Grok
 
-- [ ] **Step 1: Поставить снимки рабочих деревьев**
+✅ Done — no commits (smoke, R16; model `glm-5-3-flash` — the owner's xAI subscription ended); report `…/task-21-report.md`. Fixes from it: **Task 21a** (R22, R24) — `f7b0c09`, `5591800` (claude-mesh), `1e23b30` (mesh-review), `5f42cc0`, `09c0d82` (session-relay), `1fa8385`, `b7c4080` (claude-forge)
 
-```bash
-for p in claude-mesh session-relay mesh-review claude-md claude-forge claude-atlassian claude-prd; do
-  grok plugin install "/opt/github/zinin/$p" --trust 2>&1 | tail -1
-done
-grok inspect --json | python3 -c 'import json,sys
-d=json.load(sys.stdin)
-for p in d["plugins"]:
-    if p["name"] in ("mesh-exec","session-relay","mesh-review","claude-md","build-forge","atlassian-scout","prd-flow"):
-        print(p["name"], p["path"])'
-```
-
-Expected: семь строк, пути под `~/.grok/installed-plugins/<имя>-<hash>`.
-
-- [ ] **Step 2: Скиллы в сессии**
-
-```bash
-cd /tmp/agent-plugins-smoke
-grok -p "Reply OK" --output-format streaming-messages-json 2>/dev/null | head -1 \
-  | jq -r '.skills[]?' | grep -E '^(mesh-exec|session-relay|mesh-review|claude-md|build-forge|atlassian-scout|prd-flow):' | sort
-```
-
-Expected: те же скиллы, что в Task 20 Step 2 (без агентов).
-
-- [ ] **Step 3: Шаг 1 `do-plan` внутри настоящей сессии Grok**
-
-```bash
-cd /tmp/agent-plugins-smoke
-STEP1="$(awk 'index($0,"### Resolve the config-driven default")==1{s=1;next} s&&/^## /{exit} s&&/^```bash$/{f=1;next} f&&/^```$/{exit} f{print}' /opt/github/zinin/session-relay/skills/do-plan/SKILL.md)"
-grok -p "Run the following bash block exactly as written in one shell call and print its output verbatim, nothing else:
-$STEP1" --permission-mode bypassPermissions 2>/dev/null | tail -8
-```
-
-Expected: `DEFAULT_STOP=400000`, `DISPATCH_MODEL=` (пусто, если `opus` не слаг хоста, с предупреждением «наследуем модель сессии») или слаг, `CONTEXT_SIGNALS=<путь к signals.json>`, `CONTEXT_WINDOW=<число>`. Так проверяются поиск `read-config.py` через `installed-plugins` и чтение окна.
-
-- [ ] **Step 4: Генератор и ревью через mesh-exec**
-
-```bash
-cd /tmp/agent-plugins-smoke
-grok -p "/session-relay:transfer-session" --permission-mode bypassPermissions 2>/dev/null | tail -3; ls docs/session-transfer-*.md
-BEFORE=$(date +%s)
-grok -p "/mesh-review:codex-code-review BASE_BRANCH=master" --permission-mode bypassPermissions 2>/dev/null | tail -10
-find "${XDG_STATE_HOME:-$HOME/.local/state}/mesh/runs/codex" -mindepth 1 -maxdepth 1 -type d -newermt "@$BEFORE" | head -3
-```
-
-Expected: второй файл `docs/session-transfer-*.md`; новый каталог прогона codex.
-
-- [ ] **Step 5: Убрать снимки**
-
-```bash
-for n in mesh-exec session-relay mesh-review claude-md build-forge atlassian-scout prd-flow; do grok plugin uninstall "$n" --confirm 2>&1 | tail -1; done
-ls ~/.grok/installed-plugins | grep -E '^(mesh-exec|session-relay|mesh-review|claude-md|build-forge|atlassian-scout|prd-flow)-'; echo "---"
-```
-
-Expected: до `---` пусто.
+**Interfaces:**
+- Facts: a Grok snapshot is named `<source-dir-basename>-<hash>` (install mesh-exec from a directory named `mesh-exec`); `install --trust` enables; bare names resolve through an added marketplace; Grok ignores `dependencies`; `signals.json` is written when a turn ends (do-plan STOP only at turn boundaries); the old claude-atlassian works in Grok only in trusted folders whose `.mcp.json` defines mcp-atlassian.
 
 ---
 
 ### Task 22: смоук в Codex и таблица поддержки
 
-- [ ] **Step 1: Изолированный Codex и локальный каталог из веток**
+✅ Done — see commit(s): `5e9a5ec`, `5872457`, `773c65a` (claude-plugins); `b822b60`, `a504645`, `1cbcbe2` (claude-mesh); `8bf4aae`, `9b26e55` (session-relay); `d72c206`, `6a5eded` (claude-forge); `c7dd5ff` (claude-atlassian); `0515d63`, `9f57a07` (claude-prd); `a13cf4d` (codex-base-review)
 
-```bash
-CX=/tmp/agent-plugins-codex; rm -rf "$CX"; mkdir -p "$CX/home" "$CX/mp/.claude-plugin"
-ln -s ~/.codex/auth.json "$CX/home/auth.json"
-python3 - "$CX/mp" <<'PY'
-import json, pathlib, subprocess, sys
-mp = pathlib.Path(sys.argv[1]); plugins = []
-for src, name in (("claude-mesh","mesh-exec"),("session-relay","session-relay"),("mesh-review","mesh-review"),("claude-md","claude-md"),
-                  ("claude-forge","build-forge"),("claude-atlassian","atlassian-scout"),("claude-prd","prd-flow")):
-    dest = mp / "plugins" / name; dest.mkdir(parents=True)
-    tar = subprocess.run(["git","-C",f"/opt/github/zinin/{src}","archive","HEAD"], check=True, capture_output=True).stdout
-    subprocess.run(["tar","-x","-C",str(dest)], input=tar, check=True)
-    plugins.append({"name": name, "source": f"./plugins/{name}", "description": name})
-(mp/".claude-plugin"/"marketplace.json").write_text(json.dumps({"name":"zinin-smoke","owner":{"name":"smoke"},"plugins":plugins}, indent=2))
-PY
-git -C "$CX/mp" init -q && git -C "$CX/mp" add -A && git -C "$CX/mp" -c user.name=smoke -c user.email=smoke@local commit -qm mp
-export CODEX_HOME="$CX/home"
-codex plugin marketplace add "$CX/mp" 2>&1 | grep -v 'PATH aliases' | tail -1
-for n in mesh-exec session-relay mesh-review claude-md build-forge atlassian-scout prd-flow; do codex plugin add "$n@zinin-smoke" 2>&1 | grep -v 'PATH aliases' | tail -1; done
-cd /tmp/agent-plugins-smoke && codex debug prompt-input 2>/dev/null > "$CX/prompt.json"
-grep -oE '(mesh-exec|session-relay|mesh-review|claude-md|build-forge|atlassian-scout|prd-flow):[a-z-]+' "$CX/prompt.json" | sort -u
-```
-
-Expected: семь `Added plugin …`; список скиллов всех семи плагинов (команды `mesh-review` — если Codex их сконвертировал; записать, какие из них появились).
-
-- [ ] **Step 2: Вызовы в `codex exec`**
-
-```bash
-export CODEX_HOME=/tmp/agent-plugins-codex/home; cd /tmp/agent-plugins-smoke
-codex exec '$session-relay:transfer-session' 2>&1 | tail -3; ls docs/session-transfer-*.md
-codex exec '$session-relay:do-plan' 2>&1 | grep -F 'do-plan здесь не поддерживается' | head -1
-codex exec --add-dir "${XDG_STATE_HOME:-$HOME/.local/state}/mesh" '$mesh-exec:grok-exec — have Grok reply with the single word PONG' 2>&1 | tail -5
-codex exec '$build-forge:gradle-plugin-updater — what is the latest version of the org.jetbrains.kotlin.jvm plugin?' 2>&1 | tail -5
-```
-
-Expected: третий файл `docs/session-transfer-*.md`; строка отказа `do-plan здесь не поддерживается`; для `grok-exec` и `gradle-plugin-updater` — записать фактический исход (успех или причина: песочница, сеть, фоновый запуск).
-
-- [ ] **Step 3: Обновить таблицы поддержки**
-
-По итогам Tasks 20–22 заменить в `/opt/github/zinin/claude-plugins/README.md` каждое «smoke» в таблице «Where each plugin works» на `✓` или на `—` с причиной в одну строку (например, `grok-exec: sandbox blocks the background run`). Непрошедшее перенести в раздел «Codex follow-up» в конце README:
-
-```markdown
-## Codex follow-up
-
-What does not work in Codex yet is tracked for a separate change: <список пунктов из смоука>.
-```
-
-Те же итоги — одной строкой в разделе Install/Codex README каждого затронутого плагина (`mesh-exec`, `session-relay`, `build-forge`, `atlassian-scout`, `prd-flow`) в их репозиториях.
-
-- [ ] **Step 4: Убрать изолированный Codex и закоммитить таблицы**
-
-```bash
-rm -rf /tmp/agent-plugins-codex /tmp/agent-plugins-smoke /tmp/agent-plugins-smoke.pd
-cd /opt/github/zinin/claude-plugins && git add README.md && git commit -m "docs: record where each plugin works after the smoke runs"
-```
-
-И по коммиту `docs: note the Codex smoke result` в каждом плагине, где README менялся (`git add README.md`).
+**Interfaces:**
+- Produces: the support tables and Codex notes in every README; Codex-only defects (mesh-exec root lookup misses Codex's plugin cache; Codex refuses `rm -f` in ext-claude-/grok-exec pre-flight; `$$`=2 in the sandbox) are listed under "Codex follow-up" (R26).
 
 ---
 
