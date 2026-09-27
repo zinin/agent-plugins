@@ -4,26 +4,41 @@
     "name": "Alexander V. Zinin",
     "url": "https://github.com/zinin"
   },
-  "description": "Plugins for Claude Code by zinin",
+  "description": "Agent plugins by zinin for Claude Code, Grok and Codex",
   "plugins": [
     {
-      "name": "claude-mesh",
-      "source": { "source": "url", "url": "https://github.com/zinin/claude-mesh.git" },
-      "description": "Multi-model code review, alt-Claude execution, session helpers"
+      "name": "mesh-exec",
+      "source": { "source": "url", "url": "https://github.com/zinin/mesh-exec.git" },
+      "description": "Run a prompt through another model's CLI — Codex, Gemini, Grok, Claude Code, alt-provider models — with logging, a watchdog and run directories"
     },
     {
-      "name": "claude-forge",
-      "source": { "source": "url", "url": "https://github.com/zinin/claude-forge.git" },
+      "name": "session-relay",
+      "source": { "source": "url", "url": "https://github.com/zinin/session-relay.git" },
+      "description": "Run a plan until the context fills up, pause at a clean checkpoint, and hand the work to a fresh session"
+    },
+    {
+      "name": "mesh-review",
+      "source": { "source": "url", "url": "https://github.com/zinin/mesh-review.git" },
+      "description": "Multi-model code and design review from inside the session, for Claude Code and Grok; needs mesh-exec and session-relay, which Claude Code installs with it"
+    },
+    {
+      "name": "claude-md",
+      "source": { "source": "url", "url": "https://github.com/zinin/claude-md.git" },
+      "description": "Write and refactor CLAUDE.md files: size budgets, the three-tier layout, paths: frontmatter, a quality checklist"
+    },
+    {
+      "name": "build-forge",
+      "source": { "source": "url", "url": "https://github.com/zinin/build-forge.git" },
       "description": "Build/test/lint delegation and JVM/Android dependency updates (Gradle plugins, Google Maven)"
     },
     {
-      "name": "claude-atlassian",
-      "source": { "source": "url", "url": "https://github.com/zinin/claude-atlassian.git" },
-      "description": "Jira ticket analysis, Confluence page reading, and cross-repository bug investigation via context-protecting subagents"
+      "name": "atlassian-scout",
+      "source": { "source": "url", "url": "https://github.com/zinin/atlassian-scout.git" },
+      "description": "Jira ticket analysis, Confluence page reading, and cross-repository investigation of bugs and of new work via context-protecting subagents"
     },
     {
-      "name": "claude-prd",
-      "source": { "source": "url", "url": "https://github.com/zinin/claude-prd.git" },
+      "name": "prd-flow",
+      "source": { "source": "url", "url": "https://github.com/zinin/prd-flow.git" },
       "description": "Idea to PRD to tasks: collaborative PRD authoring plus autonomous refinement of PRD and tasks.json"
     },
     {
