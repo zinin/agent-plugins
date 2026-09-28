@@ -31,7 +31,7 @@ Agent plugins by [zinin](https://github.com/zinin) for Claude Code, Grok and Cod
 | mesh-exec | ✓ | ✓ | codex-exec, grok-exec: ✓ in a trusted folder or with `-s workspace-write`, plus `--add-dir ~/.local/state/mesh`, the CLI's home writable and network on (see its README); ext-claude-exec: — in `codex exec`, Codex refuses its `rm -f` step; gemini-exec: not verified — no Gemini credentials on the test machine (the Codex side — skill, loader, run dir — worked); no executor agents — Codex has no plugin agents |
 | session-relay | ✓ | ✓; do-plan reads the context count as of the last finished turn — a run that stays in one turn does not pause | prompt generators and pause: ✓ in a writable workspace (a trusted folder or `-s workspace-write`); do-plan refuses — no context signal |
 | mesh-review | ✓ | ✓ | not supported — dispatches plugin agents |
-| claude-md | ✓ | ✓ | ✓ with `project_doc_fallback_filenames = ["CLAUDE.md"]` in Codex's `config.toml`; `.claude/rules/` are read by hand (see the skill's Codex section) |
+| claude-md | ✓ | ✓ | ✓ with `project_doc_fallback_filenames = ["CLAUDE.md"]` in Codex's `config.toml`; `CLAUDE.md` is loaded only if neither `AGENTS.override.md` nor `AGENTS.md` is chosen in the same directory; `.claude/rules/` are read by hand (see the skill's Codex section) |
 | build-forge | ✓ | ✓ | deps-update and the updaters: ✓ in a trusted folder or with `-s workspace-write`, with network on (`-c sandbox_workspace_write.network_access=true`); build needs the build-runner agent |
 | atlassian-scout | ✓ | ✓ | ✓ with `[mcp_servers.mcp-atlassian]` in Codex's `config.toml` |
 | prd-flow | ✓ | ✓ | ✓ — the interview starts (`codex exec` stops at its first question) |
